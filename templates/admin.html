@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JanMitra AI | Admin Dashboard</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f3f6fb;
+            color: #17243a;
+        }
+
+        header {
+            background: #071b3d;
+            color: white;
+            padding: 22px 7%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        header h2 span {
+            color: #16d6a0;
+        }
+
+        header a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .container {
+            width: 86%;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+
+        .heading {
+            margin-bottom: 25px;
+        }
+
+        .heading p {
+            color: #718096;
+            margin-top: 8px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px #14213d12;
+        }
+
+        .card p {
+            color: #718096;
+            margin-bottom: 12px;
+        }
+
+        .card h2 {
+            font-size: 32px;
+            color: #087f68;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px #14213d12;
+        }
+
+        .section h2 {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 850px;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #e8edf3;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eef4f8;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        .status {
+            color: #087f68;
+            font-weight: bold;
+        }
+
+        select {
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .error {
+            color: #c0392b;
+            margin-top: 12px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            background: #071b3d;
+            color: white;
+        }
+
+        @media(max-width: 600px) {
+            .container {
+                width: 92%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h2>JanMitra <span>AI</span></h2>
+    <a href="/">← Back to Home</a>
+</header>
+
+<div class="container">
+
+    <div class="heading">
+        <h1>Admin Dashboard</h1>
+        <p>Monitor citizen grievances and recurring public issues.</p>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <p>Total Complaints</p>
+            <h2 id="total">0</h2>
+        </div>
+
+        <div class="card">
+            <p>High Priority</p>
+            <h2 id="high">0</h2>
+        </div>
+
+        <div class="card">
+            <p>Recurring Issues</p>
+            <h2 id="recurring">0</h2>
+        </div>
+
+        <div class="card">
+            <p>Categories</p>
+            <h2 id="categories">0</h2>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Complaints by Category</h2>
+        <div id="categoryList">Loading...</div>
+        <canvas id="categoryChart"></canvas>
+    </div>
+
+    <div class="section">
+        <h2>Recurring Public Issues</h2>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Category</th>
+                        <th>Complaint Count</th>
+                    </tr>
+                </thead>
+                <tbody id="recurringTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <a href="/api/admin/export-csv"
+   style="display:inline-block; background:#0d9488; color:white;
+   padding:12px 20px; border-radius:8px; text-decoration:none;
+   font-weight:bold; margin-bottom:20px;">
+   ⬇ Download CSV Report
+</a>
+        <h2>All Citizen Complaints</h2>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reference ID</th>
+                        <th>Citizen</th>
+                        <th>Area</th>
+                        <th>Category</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Update Status</th>
+                    </tr>
+                </thead>
+
+                <tbody id="complaintTable"></tbody>
+            </table>
+        </div>
+
+        <p id="error" class="error"></p>
+    </div>
+
+</div>
+
+<footer>
+    <h3>JanMitra AI</h3>
+    <p>Your Voice. Your Rights. Your Solution.</p>
+    <p>© 2026 JanMitra AI | Hackathon Project</p>
+</footer>
+
+<script>
+
+async function loadDashboard() {
+    try {
+        const statsResponse = await fetch('/api/admin/stats');
+        const stats = await statsResponse.json();
+
+        document.getElementById('total').textContent =
+            stats.total_complaints;
+
+        document.getElementById('high').textContent =
+            stats.high_priority_complaints;
+
+        document.getElementById('recurring').textContent =
+            stats.recurring_issues.length;
+
+        document.getElementById('categories').textContent =
+            stats.categories.length;
+
+        document.getElementById('categoryList').innerHTML =
+            stats.categories.map(item =>
+                `<p>${item.category}: <strong>${item.count}</strong></p>`
+            ).join('') || 'No complaints yet.';
+
+        // Draw category chart
+        const canvas = document.getElementById('categoryChart');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = canvas.clientWidth || 500;
+        canvas.height = 260;
+
+        const categories = stats.categories || [];
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (categories.length > 0) {
+            const maxCount = Math.max(
+                ...categories.map(item => item.count),
+                1
+            );
+
+            const barHeight = 28;
+            const gap = 18;
+            const labelWidth = 120;
+            const chartWidth = canvas.width - labelWidth - 30;
+
+            categories.forEach((item, index) => {
+                const y = 20 + index * (barHeight + gap);
+                const barWidth =
+                    (item.count / maxCount) * chartWidth;
+
+                ctx.fillStyle = '#334155';
+                ctx.font = '13px Arial';
+                ctx.fillText(item.category, 5, y + 19);
+
+                ctx.fillStyle = '#0d9488';
+                ctx.fillRect(
+                    labelWidth,
+                    y,
+                    barWidth,
+                    barHeight
+                );
+
+                ctx.fillStyle = '#1e293b';
+                ctx.fillText(
+                    item.count,
+                    labelWidth + barWidth + 8,
+                    y + 19
+                );
+            });
+        }
+
+        // Recurring issues table
+        document.getElementById('recurringTable').innerHTML =
+            stats.recurring_issues.map(item => `
+                <tr>
+                    <td>${item.area}</td>
+                    <td>${item.category}</td>
+                    <td>${item.count}</td>
+                </tr>
+            `).join('') ||
+            '<tr><td colspan="3">No recurring issues yet.</td></tr>';
+
+        // All complaints table
+        const response = await fetch('/api/admin/complaints');
+        const complaints = await response.json();
+
+        document.getElementById('complaintTable').innerHTML =
+            complaints.map(item => `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.citizen}</td>
+                    <td>${item.area}</td>
+                    <td>${item.category}</td>
+                    <td>${item.priority}</td>
+                    <td class="status">${item.status}</td>
+
+                    <td>
+                        <select
+                            onchange="updateComplaintStatus('${item.id}', this.value)"
+                        >
+                            <option value="Received"
+                                ${item.status === 'Received' ? 'selected' : ''}>
+                                Received
+                            </option>
+
+                            <option value="In Progress"
+                                ${item.status === 'In Progress' ? 'selected' : ''}>
+                                In Progress
+                            </option>
+
+                            <option value="Resolved"
+                                ${item.status === 'Resolved' ? 'selected' : ''}>
+                                Resolved
+                            </option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('') ||
+            '<tr><td colspan="7">No complaints yet.</td></tr>';
+
+    } catch (error) {
+        document.getElementById('error').textContent =
+            'Unable to load dashboard data. Please check the Flask server.';
+    }
+}
+
+
+// Update complaint status
+async function updateComplaintStatus(id, status) {
+    try {
+        const response = await fetch(
+            `/api/admin/update-status/${id}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: status
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            alert(result.error || 'Unable to update status.');
+            return;
+        }
+
+        alert('Complaint status updated successfully!');
+
+        loadDashboard();
+
+    } catch (error) {
+        alert('Error updating complaint status.');
+    }
+}
+
+loadDashboard();
+
+</script>
+
+</body>
+</html>
